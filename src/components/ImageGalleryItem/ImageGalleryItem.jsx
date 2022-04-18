@@ -1,56 +1,43 @@
-import { Component } from 'react';
+import { useState } from 'react';
 import PropTypes from 'prop-types';
 
 import { GalleryItem, Image } from './ImageGalleryItemStyle.styled';
 import { Modal } from '../Modal/Modal';
 
-export class ImageGalleryItem extends Component {
-  static propTypes = {
-    minSrc: PropTypes.string.isRequired,
-    maxSrc: PropTypes.string.isRequired,
-    alt: PropTypes.string,
-  };
+export function ImageGalleryItem({ minSrc, maxSrc, alt }) {
+  const [isOpenModal, setIsOpenModal] = useState(false);
 
-  state = {
-    isOpenModal: false,
-  };
-
-  componentDidMount() {
-    document.addEventListener('keydown', this.closeModalOnEsc);
-  }
-  componentWillUnmount() {
-    document.removeEventListener('keydown', this.closeModalOnEsc);
-  }
-
-  openModal = () => {
-    this.setState({ isOpenModal: true });
-  };
-
-  closeModal = e => {
+  const closeModal = e => {
     if (e.target.nodeName !== 'IMG') {
-      this.setState({ isOpenModal: false });
+      setIsOpenModal(false);
     }
   };
 
-  closeModalOnEsc = e => {
+  const closeModalOnEsc = e => {
     if (e.code === 'Escape') {
-      this.setState({ isOpenModal: false });
+      setIsOpenModal(false);
     }
   };
 
-  render() {
-    const { minSrc, maxSrc, alt } = this.props;
-    const { isOpenModal } = this.state;
-
-    return (
-      <>
-        <GalleryItem onClick={this.openModal}>
-          <Image src={minSrc} alt={alt} />
-        </GalleryItem>
-        {isOpenModal && (
-          <Modal src={maxSrc} alt={alt} closeModal={this.closeModal} />
-        )}
-      </>
-    );
-  }
+  return (
+    <>
+      <GalleryItem onClick={() => setIsOpenModal(true)}>
+        <Image src={minSrc} alt={alt} />
+      </GalleryItem>
+      {isOpenModal && (
+        <Modal
+          src={maxSrc}
+          alt={alt}
+          closeModal={closeModal}
+          closeModalOnEsc={closeModalOnEsc}
+        />
+      )}
+    </>
+  );
 }
+
+ImageGalleryItem.propTypes = {
+  minSrc: PropTypes.string.isRequired,
+  maxSrc: PropTypes.string.isRequired,
+  alt: PropTypes.string,
+};

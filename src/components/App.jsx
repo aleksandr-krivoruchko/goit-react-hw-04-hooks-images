@@ -1,7 +1,6 @@
 import { Component } from 'react';
-
-import { ToastContainer } from 'react-toastify';
-import { toast } from 'react-toastify';
+import { useState, useEffect, useRef } from 'react';
+import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import * as Scroll from 'react-scroll';
 
@@ -16,7 +15,116 @@ const API_KEY = '25188312-8cdfcf53729040d6ed9110eb8';
 const URL = 'https://pixabay.com/api/';
 const PER_PAGE = 12;
 
-export class App extends Component {
+export function App() {
+  const [searchValue, setSearchValue] = useState('');
+  const [pictures, setPictures] = useState([]);
+  const [error, setError] = useState(null);
+  const [status, setStatus] = useState('idle');
+  const [page, setPage] = useState(1);
+  const [totalHits, setTotalHits] = useState(0);
+
+  let limit = useRef(null);
+
+  useEffect(() => {
+    if (searchValue === '') {
+      return setStatus('idle');
+    }
+    setStatus('pending');
+    fetchImages(searchValue, page)
+      .then(({ hits, totalHits }) => {
+        if (hits.length !== 0) {
+          const images = hits.map(
+            ({ id, webformatURL, largeImageURL, tags, totalHits }) => ({
+              id,
+              webformatURL,
+              largeImageURL,
+              tags,
+              totalHits,
+            })
+          );
+
+          setPictures(images);
+          setTotalHits(totalHits);
+          setStatus('resolved');
+        }
+      })
+      .catch(error => {
+        setError(error);
+        setStatus('rejected');
+      });
+  }, [page, searchValue]);
+
+  //   useEffect(() => {
+  //     setStatus('pending');
+  //     fetchImages(searchValue, page)
+  //       .then(({ hits, totalHits }) => {
+  //         if (hits.length !== 0) {
+  //           const images = hits.map(
+  //             ({ id, webformatURL, largeImageURL, tags, totalHits }) => ({
+  //               id,
+  //               webformatURL,
+  //               largeImageURL,
+  //               tags,
+  //               totalHits,
+  //             })
+  //           );
+
+  //           setPictures(state => [...state, ...images]);
+  //           setTotalHits(totalHits);
+  //           setStatus('resolved');
+  //         }
+  //       })
+  //       .catch(error => {
+  //         setError(error);
+  //         setStatus('rejected');
+  //       });
+  //   }, [page]);
+
+  const fetchImages = (searchValue, page) => {
+    return fetch(
+      `${URL}?q=${searchValue}&page=${page}&key=${API_KEY}&image_type=photo&orientation=horizontal&per_page=${PER_PAGE}`
+    ).then(response => {
+      if (response.ok) {
+        return response.json();
+      }
+      return Promise.reject(
+        new Error(`Нет результатов поиска по запросу ${searchValue}`)
+      );
+    });
+  };
+
+  const handleBtnLoadMore = () => {
+    setPage(state => state + 1);
+
+    const scroll = Scroll.animateScroll;
+    scroll.scrollToBottom({ duration: 2500 });
+  };
+
+  limit = totalHits - page * PER_PAGE + PER_PAGE;
+  console.log(limit);
+  return (
+    <>
+      <ToastContainer position="top-left" autoClose={3000} />
+      <Searchbar onSubmit={value => setSearchValue(value)} />
+      {status === 'idle' && <Title>Введите запрос в поле поиска</Title>}
+      {status === 'pending' && (
+        <>
+          <ImageGallery pictures={pictures} />
+          <Loader />
+        </>
+      )}
+      {status === 'rejected' && <Title>{error.message}</Title>}
+      {status === 'resolved' && (
+        <>
+          <ImageGallery pictures={pictures} />
+          {limit > PER_PAGE && <Button onClick={handleBtnLoadMore} />}
+        </>
+      )}
+    </>
+  );
+}
+
+export class OLDApp extends Component {
   state = {
     searchValue: '',
     pictures: [],
