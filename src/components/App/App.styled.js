@@ -7,8 +7,3 @@ export const Icon = styled.div`
   justify-content: center;
 `;
 
-export const Svg = styled.svg`
-width: 100px;
-height: 100px;
-
-`
