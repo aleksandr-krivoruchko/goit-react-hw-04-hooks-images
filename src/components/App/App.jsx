@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useReducer } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import * as Scroll from 'react-scroll';
@@ -7,33 +7,58 @@ import { FcCancel } from 'react-icons/fc';
 import { Searchbar } from '../SearchBar/Searchbar';
 import { ImageGallery } from '../ImageGallery/ImageGallery';
 import { Loader } from '../Loader/Loader';
-import { Button } from '../LoadMore/Button';
+import { BtnLoadMore } from '../LoadMore/BtnLoadMore';
 import { fetchImages } from '../services/fetch';
-import { Icon } from './App.styled';
+import { isLastPage } from "../services/isLastPage";
 
+import { Icon } from './App.styled';
 import { Title } from '../Loader/LoaderStyle.styled';
 
 const PER_PAGE = 12;
 
-export function App() {
-  const [searchValue, setSearchValue] = useState('');
-  const [pictures, setPictures] = useState([]);
-  const [error, setError] = useState(null);
-  const [status, setStatus] = useState('idle');
-  const [page, setPage] = useState(1);
+function reducer(state, action) {
+  switch (action.type) {
+    case 'status':
+      return { ...state, status: action.payload }
+        
+      case 'addPictures':
+      return { ...state, pictures: [...state.pictures, ...action.payload] }
+    
+      case 'pageIncrement':
+      return { ...state, page: state.page + action.payload }
 
-  let limit = useRef(null);
+      case 'resetState':
+      return { ...state, page: 1, pictures: [], searchValue: action.payload}
+
+          case 'error':
+      return { ...state, error: action.payload }
+  
+    default:
+throw new Error(`Неподдерживаемый тип действия ${action.type}`)}
+}
+
+export function App() {
+  const [state, dispatch] = useReducer(reducer, {
+    searchValue: "",
+    pictures: [],
+    error: null,
+    status: 'idle',
+    page: 1,
+  })
+
+  let lastPage = useRef(null);
 
   useEffect(() => {
-    if (searchValue === '') {
+    if (!state.searchValue) {
       return;
     }
-    setStatus('pending');
+    dispatch({type:"status", payload:"pending"})
 
-    fetchImages(searchValue, page)
+    fetchImages(state.searchValue, state.page)
       .then(({ hits, totalHits }) => {
+
         if (hits.length === 0) {
-          setStatus('resolved');
+    dispatch({type:"status", payload:"rejected"})
           return;
         }
         const images = hits.map(
@@ -46,35 +71,29 @@ export function App() {
           })
         );
 
-        if (page === 1) {
+        if (state.page === 1) {
           toast.success(`По вашему запросу найдено ${totalHits} изображений`);
         }
+        lastPage.current = isLastPage(state.page, totalHits, PER_PAGE);
 
-        setPictures(state => [...state, ...images]);
-
-        limit.current = totalHits - page * PER_PAGE + PER_PAGE;
-
-        if (limit.current < PER_PAGE && page !== 1) {
+        if (lastPage.current && state.page !== 1) {
           toast.success(`Это последняя страница галереи`);
         }
-
-        setStatus('resolved');
+    dispatch({type:"addPictures", payload:images})
+    dispatch({type:"status", payload:"resolved"})
       })
       .catch(error => {
-        setError(error);
-        setStatus('rejected');
+    dispatch({type:"error", payload:error})
+    dispatch({type:"status", payload:"rejected"})
       });
-  }, [page, searchValue]);
+  }, [state.page, state.searchValue]);
 
   const handleSubmit = value => {
-    setSearchValue(value);
-    setPage(1);
-    setPictures([]);
+    dispatch({type:"resetState", payload:value})
   };
 
   const handleBtnLoadMore = () => {
-    setPage(state => state + 1);
-
+    dispatch({ type: "pageIncrement", payload: 1 });
     const scroll = Scroll.animateScroll;
     scroll.scrollToBottom({ duration: 2000 });
   };
@@ -84,35 +103,30 @@ export function App() {
       <ToastContainer position="top-left" autoClose={3000} />
       <Searchbar onSubmit={handleSubmit} />
 
-      {status === 'idle' && <Title>Введите запрос в поле поиска</Title>}
+      {state.status === 'idle' && <Title>Введите запрос в поле поиска</Title>}
 
-      {status === 'pending' && (
+        {state.status === 'pending' && (
         <>
-          <ImageGallery pictures={pictures} />
+          <ImageGallery pictures={state.pictures} />
           <Loader />
         </>
       )}
 
-      {status === 'resolved' && (
+      {state.status === 'resolved' && (
         <>
-          {pictures.length !== 0 ? (
-            <ImageGallery pictures={pictures} />
-          ) : (
-            <h1 style={{ textAlign: 'center' }}>
-              По вашему запросу ничего не найдено
-            </h1>
-          )}
-          {limit.current > PER_PAGE ? (
-            <Button onClick={handleBtnLoadMore} />
-          ) : (
-            <Icon>
-              <FcCancel size="200px" />
-            </Icon>
-          )}
+           <ImageGallery pictures={state.pictures} />
+          {lastPage.current
+            ? <Icon><h3>КОНЕЦ</h3>
+              <FcCancel size="100px" />
+              <h3>СПИСКА</h3>
+              </Icon>
+            : 
+            <BtnLoadMore onClick={handleBtnLoadMore} />
+          }
         </>
-      )}
+      )}  
 
-      {status === 'rejected' && <Title>{error.message}</Title>}
+      {state.status === 'rejected' && <Title>По вашему запросу ничего не найдено</Title>}
     </>
   );
 }
