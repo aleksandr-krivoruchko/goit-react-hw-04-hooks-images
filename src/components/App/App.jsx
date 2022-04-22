@@ -105,20 +105,16 @@ export function App() {
 
       {state.status === 'idle' && <Title>Введите запрос в поле поиска</Title>}
 
-        {state.status === 'pending' && (
-        <>
-          <ImageGallery pictures={state.pictures} />
-          <Loader />
-        </>
-      )}
+      {state.pictures.length !== 0 && <ImageGallery pictures={state.pictures} />}
+
+      {state.status === 'pending' && <Loader />}
 
       {state.status === 'resolved' && (
         <>
-           <ImageGallery pictures={state.pictures} />
           {lastPage.current
-            ? <Icon><h3>КОНЕЦ</h3>
-              <FcCancel size="100px" />
-              <h3>СПИСКА</h3>
+            ? <Icon><Title>КОНЕЦ
+              <FcCancel size="50px" />
+              СПИСКА</Title>
               </Icon>
             : 
             <BtnLoadMore onClick={handleBtnLoadMore} />
