@@ -8,8 +8,8 @@ import { Searchbar } from '../SearchBar/Searchbar';
 import { ImageGallery } from '../ImageGallery/ImageGallery';
 import { Loader } from '../Loader/Loader';
 import { BtnLoadMore } from '../LoadMore/BtnLoadMore';
-import { fetchImages } from '../services/fetch';
-import { isLastPage } from "../services/isLastPage";
+import { fetchImages } from '../../services/fetch';
+import { isLastPage } from '../../services/isLastPage';
 
 import { Icon } from './App.styled';
 import { Title } from '../Loader/LoaderStyle.styled';
@@ -19,32 +19,33 @@ const PER_PAGE = 12;
 function reducer(state, action) {
   switch (action.type) {
     case 'status':
-      return { ...state, status: action.payload }
-        
-      case 'addPictures':
-      return { ...state, pictures: [...state.pictures, ...action.payload] }
-    
-      case 'pageIncrement':
-      return { ...state, page: state.page + action.payload }
+      return { ...state, status: action.payload };
 
-      case 'resetState':
-      return { ...state, page: 1, pictures: [], searchValue: action.payload}
+    case 'addPictures':
+      return { ...state, pictures: [...state.pictures, ...action.payload] };
 
-          case 'error':
-      return { ...state, error: action.payload }
-  
+    case 'pageIncrement':
+      return { ...state, page: state.page + action.payload };
+
+    case 'resetState':
+      return { ...state, page: 1, pictures: [], searchValue: action.payload };
+
+    case 'error':
+      return { ...state, error: action.payload };
+
     default:
-throw new Error(`Неподдерживаемый тип действия ${action.type}`)}
+      throw new Error(`Неподдерживаемый тип действия ${action.type}`);
+  }
 }
 
 export function App() {
   const [state, dispatch] = useReducer(reducer, {
-    searchValue: "",
+    searchValue: '',
     pictures: [],
     error: null,
     status: 'idle',
     page: 1,
-  })
+  });
 
   let lastPage = useRef(null);
 
@@ -52,13 +53,12 @@ export function App() {
     if (!state.searchValue) {
       return;
     }
-    dispatch({type:"status", payload:"pending"})
+    dispatch({ type: 'status', payload: 'pending' });
 
     fetchImages(state.searchValue, state.page)
       .then(({ hits, totalHits }) => {
-
         if (hits.length === 0) {
-    dispatch({type:"status", payload:"rejected"})
+          dispatch({ type: 'status', payload: 'rejected' });
           return;
         }
         const images = hits.map(
@@ -79,50 +79,51 @@ export function App() {
         if (lastPage.current && state.page !== 1) {
           toast.success(`Это последняя страница галереи`);
         }
-    dispatch({type:"addPictures", payload:images})
-    dispatch({type:"status", payload:"resolved"})
+        dispatch({ type: 'addPictures', payload: images });
+        dispatch({ type: 'status', payload: 'resolved' });
       })
       .catch(error => {
-    dispatch({type:"error", payload:error})
-    dispatch({type:"status", payload:"rejected"})
+        dispatch({ type: 'error', payload: error });
+        dispatch({ type: 'status', payload: 'rejected' });
       });
   }, [state.page, state.searchValue]);
 
   const handleSubmit = value => {
-    dispatch({type:"resetState", payload:value})
+    dispatch({ type: 'resetState', payload: value });
   };
 
   const handleBtnLoadMore = () => {
-    dispatch({ type: "pageIncrement", payload: 1 });
+    dispatch({ type: 'pageIncrement', payload: 1 });
     const scroll = Scroll.animateScroll;
     scroll.scrollToBottom({ duration: 2000 });
   };
-
   return (
     <>
       <ToastContainer position="top-left" autoClose={3000} />
       <Searchbar onSubmit={handleSubmit} />
-
       {state.status === 'idle' && <Title>Введите запрос в поле поиска</Title>}
-
-      {state.pictures.length !== 0 && <ImageGallery pictures={state.pictures} />}
-
+      {state.pictures.length !== 0 && (
+        <ImageGallery pictures={state.pictures} />
+      )}
       {state.status === 'pending' && <Loader />}
-
       {state.status === 'resolved' && (
         <>
-          {lastPage.current
-            ? <Icon><Title>КОНЕЦ
-              <FcCancel size="50px" />
-              СПИСКА</Title>
-              </Icon>
-            : 
+          {lastPage.current ? (
+            <Icon>
+              <Title>
+                КОНЕЦ
+                <FcCancel size="50px" />
+                СПИСКА
+              </Title>
+            </Icon>
+          ) : (
             <BtnLoadMore onClick={handleBtnLoadMore} />
-          }
+          )}
         </>
-      )}  
-
-      {state.status === 'rejected' && <Title>По вашему запросу ничего не найдено</Title>}
+      )}
+      {state.status === 'rejected' && (
+        <Title>По вашему запросу ничего не найдено</Title>
+      )}
     </>
   );
 }
